@@ -185,7 +185,7 @@ chk("raw rows", 110, len(raw), 0)
 chk("raw cols", 27, len(raw[0]), 0)
 chk("clean rows", 110, len(clean), 0)
 chk("clean cols", 27, len(clean[0]), 0)
-chk("quarantine notes", 20, len(qlog), 0)
+chk("quarantine notes", 18, len(qlog), 0)
 chk("quarantine rows", 17, len(set(q["num"] for q in qlog)), 0)
 
 chk("rows not closing to 100.000 wt%", 0,
@@ -220,16 +220,16 @@ chk("PDI>1 rows: whole DLS triplet blanked", True,
 chk("sub-nm peak rows: peak only, pdi kept", True,
     all(num(ROW[n], "peak_size_nm") is None and num(ROW[n], "pdi") is not None
         for n in (43, 44)), 0)
-chk("row 22: zeta and mobility blanked", True,
-    all(num(ROW[22], c) is None for c in ("zeta_mv", "mobility_cm2_vs")), 0)
+chk("row 22: zeta sign-corrected, mobility kept", -78.9, num(ROW[22], "zeta_mv"), 0.01)
+chk("  its mobility, left as measured", -0.000613, num(ROW[22], "mobility_cm2_vs"), 1e-9)
 chk("row 30: zeta kept, mobility blanked", True,
     num(ROW[30], "zeta_mv") is not None and num(ROW[30], "mobility_cm2_vs") is None, 0)
 
 # --------------------------------------------------------------- project.md : Decisions
 print("\n== Decisions ==")
-chk("analysis set (in_analysis_set flag)", 108, N_ANALYSIS, 0)
+chk("analysis set (in_analysis_set flag)", 109, N_ANALYSIS, 0)
 for col, n in [("stability_days", 110), ("z_average_nm", 21), ("pdi", 21),
-               ("peak_size_nm", 19), ("zeta_mv", 11), ("mobility_cm2_vs", 10)]:
+               ("peak_size_nm", 19), ("zeta_mv", 12), ("mobility_cm2_vs", 11)]:
     chk("usable n: %s" % col, n, sum(1 for r in clean if num(r, col) is not None), 0)
 
 fails = [r for r in clean if (num(r, "stability_days") or 0) <= 10]
@@ -266,16 +266,16 @@ chk("  its listed surfactant masses sum to (g)", 2.40,
     F110["span80"] + F110["lecithin"] + F110["tween_oil"] + F110["tween_water"], 0.01)
 
 r, p, n = spearman(*triple(ANALYSIS, "ph", "stability_days"))
-chk("pH vs stability rho (108 rows)", 0.05, r, 0.01)
-chk("  p", 0.62, p, 0.02)
+chk("pH vs stability rho (109 rows)", 0.05, r, 0.01)
+chk("  p", 0.57, p, 0.02)
 
 # --------------------------------------------------------------- project.md : Headline
 print("\n== Progress-report headline ==")
 r, p, n = spearman(*triple(ANALYSIS, "lecithin_pct", "stability_days"))
 chk("lecithin vs stability, raw rho", 0.50, r, 0.01)
 pr, pp, pn = partial(*triple(ANALYSIS, "lecithin_pct", "stability_days", "num"))
-chk("lecithin vs stability, PARTIAL on run order", 0.36, pr, 0.01)
-chk("  n", 108, pn, 0)
+chk("lecithin vs stability, PARTIAL on run order", 0.38, pr, 0.01)
+chk("  n", 109, pn, 0)
 
 # Dose-response bins are half-open, [lo, hi), with 0 wt% as its own bin and the top bin
 # closed because the maximum is exactly 5.50 wt%.
@@ -283,7 +283,7 @@ zero = [num(r, "stability_days") for r in ANALYSIS if num(r, "lecithin_pct") == 
 chk("dose bin 0 wt%: n", 11, len(zero), 0)
 chk("  median stability (d)", 10.0, st.median(zero), 0.01)
 for lo, hi, n_exp, med in [(0.0, 1.0, 26, 10.0), (1.0, 2.0, 27, 13.0), (2.0, 3.0, 14, 15.0),
-                           (3.0, 4.0, 17, 21.0), (4.0, 5.5, 13, 23.0)]:
+                           (3.0, 4.0, 17, 21.0), (4.0, 5.5, 14, 34.5)]:
     v = [num(r, "stability_days") for r in ANALYSIS
          if 0 < num(r, "lecithin_pct") and
          (lo <= num(r, "lecithin_pct") < hi or (hi == 5.5 and num(r, "lecithin_pct") == 5.5))]
@@ -292,16 +292,16 @@ for lo, hi, n_exp, med in [(0.0, 1.0, 26, 10.0), (1.0, 2.0, 27, 13.0), (2.0, 3.0
 
 sub = [r for r in ANALYSIS if num(r, "stability_days") <= 120]
 r, p, n = spearman(*triple(sub, "lecithin_pct", "stability_days"))
-chk("robustness: drop the 5 long-lived rows", 0.44, r, 0.01)
+chk("robustness: drop the 6 long-lived rows", 0.44, r, 0.01)
 sub = [r for r in ANALYSIS if num(r, "lecithin_pct") > 0]
 r, p, n = spearman(*triple(sub, "lecithin_pct", "stability_days"))
 chk("robustness: lecithin-bearing rows only", 0.54, r, 0.01)
-chk("  n", 97, n, 0)
+chk("  n", 98, n, 0)
 
-for col, rho in [("span80_pct", -0.46), ("xanthan_pct", 0.39), ("glycerol_pct", 0.36)]:
+for col, rho in [("span80_pct", -0.47), ("xanthan_pct", 0.40), ("glycerol_pct", 0.38)]:
     r, p, n = spearman(*triple(ANALYSIS, col, "stability_days"))
     chk("next lever: %s" % col, rho, r, 0.01)
-for col, rho in [("span80_pct", -0.57), ("xanthan_pct", 0.46)]:
+for col, rho in [("span80_pct", -0.58), ("xanthan_pct", 0.47)]:
     r, p, n = spearman(*triple(ANALYSIS, col, "lecithin_pct"))
     chk("  %s tracks lecithin at" % col, rho, r, 0.01)
 
@@ -310,7 +310,7 @@ r, p, n = spearman(*triple(ANALYSIS, "num", "stability_days"))
 chk("run order vs stability", -0.39, r, 0.01)
 r, p, n = spearman(*triple(ANALYSIS, "num", "lecithin_pct"))
 chk("run order vs lecithin", -0.55, r, 0.01)
-for lo, hi, rho in [(1, 20, 0.13), (21, 40, -0.08), (41, 60, 0.11), (61, 80, 0.79)]:
+for lo, hi, rho in [(1, 20, 0.13), (21, 40, -0.02), (41, 60, 0.11), (61, 80, 0.79)]:
     blk = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi]
     r, p, n = spearman(*triple(blk, "lecithin_pct", "stability_days"))
     chk("block %d-%d rho" % (lo, hi), rho, r, 0.015)

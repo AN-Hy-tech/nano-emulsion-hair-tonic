@@ -4,8 +4,9 @@ Client answers that drive this script:
   - DLS was run only on formulations that already passed the stability screen  -> survivor-only
   - pH was measured; the 5.1-6.5 band is the range appropriate to the oil      -> kept
     phase (olive oil). The repeating 15-step ramp is a designed sweep, not a
-    fabricated column. It carries no stability signal yet (rho=+0.05, p=0.58 on
-    the 109-row analysis set; scripts/stats_report.py regenerates this).
+    fabricated column. It carries no stability signal on the analysis set --
+    scripts/stats_report.py owns that figure and drift-checks it; do not copy
+    it here, because nothing checks this docstring.
   - Stability_days == 0 means the sample degraded immediately                  -> real data, kept
   - Rows 2-7 / 55-60 are different samples, not a duplication                  -> both kept
   - Quarantine confirmed: expensive tests inform optimisation, not prediction
@@ -36,19 +37,24 @@ def f(r, k):
 # ---- quarantine rules: scoped to the offending cells, never a row deletion ----
 PDI_INVALID   = {54, 60, 61, 63}        # PDI > 1 is physically impossible
 PEAK_INVALID  = {43, 44, 54}            # peak size below molecular dimensions
-ZETA_INVALID  = {22}                    # zeta sign contradicts mobility sign
-MOB_INVALID   = {22, 30}                # row 30: mobility 0.0 with zeta -79.4 mV
+ZETA_INVALID  = set()                   # row 22 resolved 2026-10-07, see CORRECTIONS
+MOB_INVALID   = {30}                    # row 30: mobility 0.0 with zeta -79.4 mV
+
+# ---- client-confirmed corrections to the raw CSV ----
+# Applied when building the clean file; data/raw-data/ is never edited. Every entry
+# carries who confirmed it and when, and lands in quarantine_reason so it stays visible.
+CORRECTIONS = {
+    (22, "zeta_mv"): (-78.9,
+        "sign typo: the CSV reads +78.9 mV. Confirmed as -78.9 mV by the client "
+        "2026-10-07. Consistent with row 22's own mobility of -0.000613, with all 11 "
+        "other zeta readings being negative (-60.5 to -79.4), and with row 31 as a near "
+        "twin at -78.8 mV / -0.000611."),
+}
 
 # ---- rows excluded from the analysis set -- marked, never deleted ----
 # The file always keeps all 110 rows; `in_analysis_set` is what modelling filters on.
 # Delete an entry here to put the row back; nothing else needs touching.
 ANALYSIS_EXCLUDE = {
-    22: "excluded on Amirhossein's call 2026-10-07 with the zeta sign convention "
-        "unresolved. CAUTION: row 22 is the longest-lived formulation in the set "
-        "(495 d, rank 1 of 109) and the evidence reads as a dropped minus sign, not "
-        "bad data -- its mobility is -0.000613, all 11 other zeta readings are "
-        "negative (-60.5 to -79.4), and row 31 is a near twin at zeta -78.8 mV / "
-        "mobility -0.000611. Reading it as -78.9 mV makes the row self-consistent.",
     110: "composition contradicted by the client's F110 sheet, confirmed 2026-10-06 "
          "as the lab's corrected figures: the sheet records Tween80_oil 0.35 g and "
          "Tween80_water 0.50 g that the CSV leaves blank, and PG 0.03 g against the "
@@ -88,8 +94,8 @@ for r in rows:
              "Tween80_oil_phase_g": HLB_TWEEN80, "Tween80_water_phase_g": HLB_TWEEN80}
     rec["hlb_calc"] = round(sum((f(r, k) or 0) * w for k, w in hlb_w.items()) / surf_g, 3) if surf_g else ""
     # pH: a measured, deliberately swept design factor. Kept as a column; it does not
-    # yet earn a place in the feature set (rho=+0.05, p=0.58 against stability_days,
-    # 109 rows). Regenerate with scripts/stats_report.py rather than editing by hand.
+    # yet earn a place in the feature set: no signal against stability_days. The figure
+    # lives in planning/project.md and is checked by scripts/stats_report.py.
     rec["ph"] = f(r, "pH")
 
     # ---- responses, with quarantined cells blanked ----
@@ -103,6 +109,9 @@ for r in rows:
     if n in PEAK_INVALID and peak is not None:
         reasons.append("peak size %.1f nm below molecular dimensions" % peak)
         peak = None
+    if (n, "zeta_mv") in CORRECTIONS:
+        zeta, why = CORRECTIONS[(n, "zeta_mv")]
+        reasons.append("zeta corrected to %.1f mV -- %s" % (zeta, why))
     if n in ZETA_INVALID:
         reasons.append("zeta +%.1f mV contradicts negative mobility; sign convention unresolved" % zeta)
         zeta = None
