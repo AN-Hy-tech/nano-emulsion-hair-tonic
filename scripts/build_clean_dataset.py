@@ -39,6 +39,24 @@ PEAK_INVALID  = {43, 44, 54}            # peak size below molecular dimensions
 ZETA_INVALID  = {22}                    # zeta sign contradicts mobility sign
 MOB_INVALID   = {22, 30}                # row 30: mobility 0.0 with zeta -79.4 mV
 
+# ---- rows excluded from the analysis set -- marked, never deleted ----
+# The file always keeps all 110 rows; `in_analysis_set` is what modelling filters on.
+# Delete an entry here to put the row back; nothing else needs touching.
+ANALYSIS_EXCLUDE = {
+    22: "excluded on Amirhossein's call 2026-10-07 with the zeta sign convention "
+        "unresolved. CAUTION: row 22 is the longest-lived formulation in the set "
+        "(495 d, rank 1 of 109) and the evidence reads as a dropped minus sign, not "
+        "bad data -- its mobility is -0.000613, all 11 other zeta readings are "
+        "negative (-60.5 to -79.4), and row 31 is a near twin at zeta -78.8 mV / "
+        "mobility -0.000611. Reading it as -78.9 mV makes the row self-consistent.",
+    110: "composition contradicted by the client's F110 sheet, confirmed 2026-10-06 "
+         "as the lab's corrected figures: the sheet records Tween80_oil 0.35 g and "
+         "Tween80_water 0.50 g that the CSV leaves blank, and PG 0.03 g against the "
+         "CSV's 0.50 g. Not patched here because the sheet omits xanthan and guar, "
+         "so its PG 0.03 g may be the CSV's xanthan; excluded until further sheets "
+         "arrive.",
+}
+
 # ---- Stability_days semantics, confirmed by the client 2026-10-06 ----
 # Days from formulation until visible degradation: a row reading 10 was stable for ten
 # days and had degraded by the next check. The runs of identical 10s are therefore real
@@ -49,7 +67,7 @@ HEADER = ["num"] + [c for _, c in COMP] + [
     "surfactant_total_pct", "hlb_client", "hlb_calc", "ph",
     "stability_days", "stability_quality",
     "z_average_nm", "pdi", "peak_size_nm", "zeta_mv", "mobility_cm2_vs",
-    "dls_measured", "renorm_total_g", "quarantine_reason",
+    "dls_measured", "in_analysis_set", "renorm_total_g", "quarantine_reason",
 ]
 
 out, qlog = [], []
@@ -102,13 +120,9 @@ for r in rows:
     rec["stability_quality"] = "measured"
     if abs(total - 50) > 0.5:
         reasons.append("pre-renormalisation total %.2f g vs 50 g batch" % total)
-    if n == 110:
-        reasons.append("composition contradicted by the client's F110 sheet, confirmed "
-                       "2026-10-06 as the lab's corrected figures: the sheet records "
-                       "Tween80_oil 0.35 g and Tween80_water 0.50 g that the CSV leaves "
-                       "blank, and PG 0.03 g against the CSV's 0.50 g. Not patched here "
-                       "because the sheet omits xanthan and guar, so its PG 0.03 g may be "
-                       "the CSV's xanthan; excluded until further sheets arrive.")
+    rec["in_analysis_set"] = 0 if n in ANALYSIS_EXCLUDE else 1
+    if n in ANALYSIS_EXCLUDE:
+        reasons.append("excluded from the analysis set: " + ANALYSIS_EXCLUDE[n])
 
     rec["quarantine_reason"] = "; ".join(reasons)
     out.append(rec)
@@ -132,6 +146,9 @@ print("\nusable n per response (after quarantine):")
 for c in ["stability_days", "z_average_nm", "pdi", "peak_size_nm", "zeta_mv", "mobility_cm2_vs"]:
     print("  %-18s %d" % (c, sum(1 for r in out if r[c] != "")))
 print("  all stability readings are observed events (client-confirmed, none censored)")
+keep = [r for r in out if r["in_analysis_set"] == 1]
+print("\nanalysis set: %d of %d rows (excluded: %s)" % (
+    len(keep), len(out), ", ".join(str(n) for n in sorted(ANALYSIS_EXCLUDE))))
 print("  rows with any quarantine note   %d" % sum(1 for r in out if r["quarantine_reason"]))
 print("\nhlb_client vs hlb_calc: mean abs diff %.2f, within 0.2 on %d/110" % (
     sum(abs(r["hlb_client"] - r["hlb_calc"]) for r in out if r["hlb_calc"] != "") / 110,

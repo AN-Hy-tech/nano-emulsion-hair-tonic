@@ -142,7 +142,10 @@ def num(r, k):
 raw = list(csv.DictReader(open(RAW, encoding="utf-8-sig")))
 clean = list(csv.DictReader(open(CLEAN, encoding="utf-8-sig")))
 qlog = list(csv.DictReader(open(QLOG, encoding="utf-8-sig")))
-A109 = [r for r in clean if int(r["num"]) != 110]   # row 110: composition quarantined
+# Analysis set: driven by the in_analysis_set flag the build script writes, so an
+# exclusion is changed in one place (ANALYSIS_EXCLUDE) and every figure here follows.
+ANALYSIS = [r for r in clean if r["in_analysis_set"] == "1"]
+N_ANALYSIS = len(ANALYSIS)
 ROW = {int(r["num"]): r for r in clean}
 
 
@@ -181,8 +184,8 @@ print("\n== Data ==")
 chk("raw rows", 110, len(raw), 0)
 chk("raw cols", 27, len(raw[0]), 0)
 chk("clean rows", 110, len(clean), 0)
-chk("clean cols", 26, len(clean[0]), 0)
-chk("quarantine notes", 19, len(qlog), 0)
+chk("clean cols", 27, len(clean[0]), 0)
+chk("quarantine notes", 20, len(qlog), 0)
 chk("quarantine rows", 17, len(set(q["num"] for q in qlog)), 0)
 
 chk("rows not closing to 100.000 wt%", 0,
@@ -224,7 +227,7 @@ chk("row 30: zeta kept, mobility blanked", True,
 
 # --------------------------------------------------------------- project.md : Decisions
 print("\n== Decisions ==")
-chk("analysis set (all but row 110)", 109, len(A109), 0)
+chk("analysis set (in_analysis_set flag)", 108, N_ANALYSIS, 0)
 for col, n in [("stability_days", 110), ("z_average_nm", 21), ("pdi", 21),
                ("peak_size_nm", 19), ("zeta_mv", 11), ("mobility_cm2_vs", 10)]:
     chk("usable n: %s" % col, n, sum(1 for r in clean if num(r, col) is not None), 0)
@@ -262,56 +265,56 @@ chk("F110 sheet Sur% implies (g in 50 g batch)", 4.45, F110["stated_surf_pct"] /
 chk("  its listed surfactant masses sum to (g)", 2.40,
     F110["span80"] + F110["lecithin"] + F110["tween_oil"] + F110["tween_water"], 0.01)
 
-r, p, n = spearman(*triple(A109, "ph", "stability_days"))
-chk("pH vs stability rho (109 rows)", 0.05, r, 0.01)
-chk("  p", 0.58, p, 0.02)
+r, p, n = spearman(*triple(ANALYSIS, "ph", "stability_days"))
+chk("pH vs stability rho (108 rows)", 0.05, r, 0.01)
+chk("  p", 0.62, p, 0.02)
 
 # --------------------------------------------------------------- project.md : Headline
 print("\n== Progress-report headline ==")
-r, p, n = spearman(*triple(A109, "lecithin_pct", "stability_days"))
+r, p, n = spearman(*triple(ANALYSIS, "lecithin_pct", "stability_days"))
 chk("lecithin vs stability, raw rho", 0.50, r, 0.01)
-pr, pp, pn = partial(*triple(A109, "lecithin_pct", "stability_days", "num"))
-chk("lecithin vs stability, PARTIAL on run order", 0.38, pr, 0.01)
-chk("  n", 109, pn, 0)
+pr, pp, pn = partial(*triple(ANALYSIS, "lecithin_pct", "stability_days", "num"))
+chk("lecithin vs stability, PARTIAL on run order", 0.36, pr, 0.01)
+chk("  n", 108, pn, 0)
 
 # Dose-response bins are half-open, [lo, hi), with 0 wt% as its own bin and the top bin
 # closed because the maximum is exactly 5.50 wt%.
-zero = [num(r, "stability_days") for r in A109 if num(r, "lecithin_pct") == 0]
+zero = [num(r, "stability_days") for r in ANALYSIS if num(r, "lecithin_pct") == 0]
 chk("dose bin 0 wt%: n", 11, len(zero), 0)
 chk("  median stability (d)", 10.0, st.median(zero), 0.01)
 for lo, hi, n_exp, med in [(0.0, 1.0, 26, 10.0), (1.0, 2.0, 27, 13.0), (2.0, 3.0, 14, 15.0),
-                           (3.0, 4.0, 17, 21.0), (4.0, 5.5, 14, 34.5)]:
-    v = [num(r, "stability_days") for r in A109
+                           (3.0, 4.0, 17, 21.0), (4.0, 5.5, 13, 23.0)]:
+    v = [num(r, "stability_days") for r in ANALYSIS
          if 0 < num(r, "lecithin_pct") and
          (lo <= num(r, "lecithin_pct") < hi or (hi == 5.5 and num(r, "lecithin_pct") == 5.5))]
     chk("dose bin %.1f-%.1f wt%%: n" % (lo, hi), n_exp, len(v), 0)
     chk("  median stability (d)", med, st.median(v), 0.01)
 
-sub = [r for r in A109 if num(r, "stability_days") <= 120]
+sub = [r for r in ANALYSIS if num(r, "stability_days") <= 120]
 r, p, n = spearman(*triple(sub, "lecithin_pct", "stability_days"))
-chk("robustness: drop the 6 long-lived rows", 0.44, r, 0.01)
-sub = [r for r in A109 if num(r, "lecithin_pct") > 0]
+chk("robustness: drop the 5 long-lived rows", 0.44, r, 0.01)
+sub = [r for r in ANALYSIS if num(r, "lecithin_pct") > 0]
 r, p, n = spearman(*triple(sub, "lecithin_pct", "stability_days"))
 chk("robustness: lecithin-bearing rows only", 0.54, r, 0.01)
-chk("  n", 98, n, 0)
+chk("  n", 97, n, 0)
 
-for col, rho in [("span80_pct", -0.47), ("xanthan_pct", 0.40), ("glycerol_pct", 0.38)]:
-    r, p, n = spearman(*triple(A109, col, "stability_days"))
+for col, rho in [("span80_pct", -0.46), ("xanthan_pct", 0.39), ("glycerol_pct", 0.36)]:
+    r, p, n = spearman(*triple(ANALYSIS, col, "stability_days"))
     chk("next lever: %s" % col, rho, r, 0.01)
-for col, rho in [("span80_pct", -0.58), ("xanthan_pct", 0.47)]:
-    r, p, n = spearman(*triple(A109, col, "lecithin_pct"))
+for col, rho in [("span80_pct", -0.57), ("xanthan_pct", 0.46)]:
+    r, p, n = spearman(*triple(ANALYSIS, col, "lecithin_pct"))
     chk("  %s tracks lecithin at" % col, rho, r, 0.01)
 
 print("\n-- the run-order confound --")
-r, p, n = spearman(*triple(A109, "num", "stability_days"))
+r, p, n = spearman(*triple(ANALYSIS, "num", "stability_days"))
 chk("run order vs stability", -0.39, r, 0.01)
-r, p, n = spearman(*triple(A109, "num", "lecithin_pct"))
+r, p, n = spearman(*triple(ANALYSIS, "num", "lecithin_pct"))
 chk("run order vs lecithin", -0.55, r, 0.01)
-for lo, hi, rho in [(1, 20, 0.13), (21, 40, -0.02), (41, 60, 0.11), (61, 80, 0.79)]:
-    blk = [r for r in A109 if lo <= int(r["num"]) <= hi]
+for lo, hi, rho in [(1, 20, 0.13), (21, 40, -0.08), (41, 60, 0.11), (61, 80, 0.79)]:
+    blk = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi]
     r, p, n = spearman(*triple(blk, "lecithin_pct", "stability_days"))
     chk("block %d-%d rho" % (lo, hi), rho, r, 0.015)
-tail = [r for r in A109 if int(r["num"]) >= 81]
+tail = [r for r in ANALYSIS if int(r["num"]) >= 81]
 chk("rows 81-109 stability values (barely vary)", [10.0, 11.0],
     sorted(set(num(r, "stability_days") for r in tail)), 0)
 
@@ -320,7 +323,7 @@ chk("rows 81-109 stability values (barely vary)", [10.0, 11.0],
 # spans so that argument stays checkable against the data instead of being taken on trust.
 print("\n  per-block spans (project.md: blocks 21-40 and 41-60 are range-restricted)")
 for lo, hi in [(1, 20), (21, 40), (41, 60), (61, 80), (81, 109)]:
-    blk = [r for r in A109 if lo <= int(r["num"]) <= hi]
+    blk = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi]
     lec = [num(r, "lecithin_pct") for r in blk]
     stb = [num(r, "stability_days") for r in blk]
     print("    rows %3d-%3d   lecithin %.2f-%.2f wt%%   stability %3.0f-%3.0f d   n=%d"
