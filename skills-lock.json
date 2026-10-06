@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "ml-pipeline-workflow": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/machine-learning-ops/skills/ml-pipeline-workflow/SKILL.md",
+      "computedHash": "f72d6581a0d4422211378315b58096b6782976f29247be787abbe44f5f49e97c"
+    },
+    "mlops-engineer": {
+      "source": "sickn33/agentic-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mlops-engineer/SKILL.md",
+      "computedHash": "daa9d9c7960db3beb4354ecc72b049984eee4a7cae0a4fdb9976bbd676ea9ba4"
+    },
+    "nature-literature-pipeline": {
+      "source": "yuan1z0825/nature-skills",
+      "sourceType": "github",
+      "skillPath": "skills/nature-literature-pipeline/SKILL.md",
+      "computedHash": "823b72e5a47399ee5f8e7727959b04d7715aa060c71c07ee3fa28b53631531fa"
+    }
+  }
+}

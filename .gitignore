@@ -1,0 +1,26 @@
+# Local only. Workspace rule: docs and local config stay out of the repo —
+# planning docs live in the sdlc repo, project memory lives in CLAUDE.md.
+CLAUDE.md
+.claude/settings.local.json
+
+# Secrets
+.env
+.env.*
+
+# Client data and model artifacts. Never commit these.
+data/
+*.csv
+*.xlsx
+*.xls
+models/
+*.pkl
+*.joblib
+*.h5
+mlruns/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
