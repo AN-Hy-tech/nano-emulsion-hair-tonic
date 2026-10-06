@@ -4,7 +4,8 @@ Client answers that drive this script:
   - DLS was run only on formulations that already passed the stability screen  -> survivor-only
   - pH was measured; the 5.1-6.5 band is the range appropriate to the oil      -> kept
     phase (olive oil). The repeating 15-step ramp is a designed sweep, not a
-    fabricated column. It carries no stability signal yet (rho=+0.07, p=0.56).
+    fabricated column. It carries no stability signal yet (rho=+0.05, p=0.58 on
+    the 109-row analysis set; scripts/stats_report.py regenerates this).
   - Stability_days == 0 means the sample degraded immediately                  -> real data, kept
   - Rows 2-7 / 55-60 are different samples, not a duplication                  -> both kept
   - Quarantine confirmed: expensive tests inform optimisation, not prediction
@@ -69,7 +70,8 @@ for r in rows:
              "Tween80_oil_phase_g": HLB_TWEEN80, "Tween80_water_phase_g": HLB_TWEEN80}
     rec["hlb_calc"] = round(sum((f(r, k) or 0) * w for k, w in hlb_w.items()) / surf_g, 3) if surf_g else ""
     # pH: a measured, deliberately swept design factor. Kept as a column; it does not
-    # yet earn a place in the feature set (rho=+0.07, p=0.56 against stability_days).
+    # yet earn a place in the feature set (rho=+0.05, p=0.58 against stability_days,
+    # 109 rows). Regenerate with scripts/stats_report.py rather than editing by hand.
     rec["ph"] = f(r, "pH")
 
     # ---- responses, with quarantined cells blanked ----
