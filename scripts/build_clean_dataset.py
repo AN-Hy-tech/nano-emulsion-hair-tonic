@@ -3,7 +3,8 @@
 Client answers that drive this script:
   - DLS was run only on formulations that already passed the stability screen  -> survivor-only
   - pH was measured; the 5.1-6.5 band is the range appropriate to the oil      -> kept
-    phase (olive oil). The repeating 15-step ramp is a designed sweep, not a
+    phase (a 12-plant herbal blend, oleic-acid-rich; confirmed 2026-10-07 --
+    it is NOT olive oil, an earlier note here said so and was wrong). The repeating 15-step ramp is a designed sweep, not a
     fabricated column. It carries no stability signal on the analysis set --
     scripts/stats_report.py owns that figure and drift-checks it; do not copy
     it here, because nothing checks this docstring.

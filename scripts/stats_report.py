@@ -305,6 +305,38 @@ for col, rho in [("span80_pct", -0.58), ("xanthan_pct", 0.47)]:
     r, p, n = spearman(*triple(ANALYSIS, col, "lecithin_pct"))
     chk("  %s tracks lecithin at" % col, rho, r, 0.01)
 
+# ----------------------------------------------- project.md : Replicates
+# Groups of rows whose 11 composition columns agree to <0.05 wt%. They are the only
+# direct read we have on how much of stability_days composition cannot explain, and
+# they are why cross-validation has to group by composition rather than split rows.
+print("\n-- replicates (identical composition, different outcome) --")
+CCOLS = [c for _, c in COMP]
+groups = []
+for r in ANALYSIS:
+    for g in groups:
+        if max(abs(num(r, c) - num(g[0], c)) for c in CCOLS) < 0.05:
+            g.append(r); break
+    else:
+        groups.append([r])
+reps = [g for g in groups if len(g) > 1]
+chk("distinct compositions", 101, len(groups), 0)
+chk("replicate groups", 7, len(reps), 0)
+chk("rows inside a replicate group", 15, sum(len(g) for g in reps), 0)
+pure_ss = sum((num(x, "stability_days") - st.mean([num(y, "stability_days") for y in g])) ** 2
+              for g in reps for x in g)
+pure_df = sum(len(g) - 1 for g in reps)
+chk("pure-error SD (days)", 24.9, (pure_ss / pure_df) ** 0.5, 0.1)
+chk("  on degrees of freedom", 8, pure_df, 0)
+chk("total SD of stability_days (days)", 81.1,
+    st.pstdev([num(r, "stability_days") for r in ANALYSIS]), 0.1)
+chk("widest replicate spread (days), rows 23/24/25", 88.0,
+    max(max(num(x, "stability_days") for x in g) - min(num(x, "stability_days") for x in g)
+        for g in reps), 0.1)
+for g in reps:
+    ys = sorted(num(x, "stability_days") for x in g)
+    print("    rows %-12s stability %-22s spread %3.0f d"
+          % (",".join(x["num"] for x in g), str(ys), ys[-1] - ys[0]))
+
 print("\n-- the run-order confound --")
 r, p, n = spearman(*triple(ANALYSIS, "num", "stability_days"))
 chk("run order vs stability", -0.39, r, 0.01)
