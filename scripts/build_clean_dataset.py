@@ -10,6 +10,8 @@ Client answers that drive this script:
     it here, because nothing checks this docstring.
   - Stability_days == 0 means the sample degraded immediately                  -> real data, kept
   - Rows 2-7 / 55-60 are different samples, not a duplication                  -> both kept
+  - No failure reason was ever recorded for rows 2-7 (client, 2026-10-07)      -> unexplained
+  - The protocol was constant per sample, nothing logged per batch (same day)  -> no features
   - Quarantine confirmed: expensive tests inform optimisation, not prediction
 """
 import csv, os
@@ -54,14 +56,19 @@ CORRECTIONS = {
 
 # ---- rows excluded from the analysis set -- marked, never deleted ----
 # The file always keeps all 110 rows; `in_analysis_set` is what modelling filters on.
-# Delete an entry here to put the row back; nothing else needs touching.
+# 2026-10-07: the client called F110 "just a mistake"; Albert settled that the *batch*
+# was the mistake, not the sheet. Row 110 therefore stays excluded and n = 109 is final.
+# Deleting the entry below reinstates the row, which makes n = 110 and moves every figure
+# in planning/project.md -- so it also means rerunning stats_report.py and reconciling the
+# doc. Nothing else needs touching, but do not do it casually.
 ANALYSIS_EXCLUDE = {
-    110: "composition contradicted by the client's F110 sheet, confirmed 2026-10-06 "
-         "as the lab's corrected figures: the sheet records Tween80_oil 0.35 g and "
-         "Tween80_water 0.50 g that the CSV leaves blank, and PG 0.03 g against the "
-         "CSV's 0.50 g. Not patched here because the sheet omits xanthan and guar, "
-         "so its PG 0.03 g may be the CSV's xanthan; excluded until further sheets "
-         "arrive.",
+    110: "composition unreliable whichever document you trust, so excluded 2026-10-07: "
+         "the client's F110 sheet records Tween80_oil 0.35 g and Tween80_water 0.50 g "
+         "that the CSV leaves blank, and PG 0.03 g against the CSV's 0.50 g, while the "
+         "sheet does not close against itself either (its surfactant masses sum to 2.4 g "
+         "where its own stated 8.9 % implies 4.45 g). Settled as a bad batch rather than "
+         "a bad sheet, so this is final, not pending further sheets. Not patched, because "
+         "the sheet omits xanthan and guar and its PG 0.03 g may be the CSV's xanthan.",
 }
 
 # ---- Stability_days semantics, confirmed by the client 2026-10-06 ----

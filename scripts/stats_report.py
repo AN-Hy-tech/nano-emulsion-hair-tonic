@@ -1,11 +1,9 @@
 """Regenerate every figure quoted in sdlc/nano-emulsion-hair-tonic/planning/project.md.
 
-Why this exists: those figures were originally computed by hand. When the client's
-2026-10-06 answer grew the analysis set from 80 rows to 109, the headline tables were
-recomputed but two sections were not, so the doc carried stale 80-row numbers for weeks
-(hlb_client rho, every pH statistic). This script removes that failure mode: each expected
-value below is the number currently written in project.md, and the script recomputes it
-from the CSV and reports DRIFT on any mismatch.
+Why this exists: a figure written into a doc by hand goes stale silently when the data
+changes. Each expected value below is the number currently written in project.md; the
+script recomputes it from the CSV and reports DRIFT on any mismatch. project.md is the
+single place project figures live, so this is the only thing that keeps them honest.
 
 Run it after anything that touches the data -- new worked sheets, a row-22 sign fix, a
 rebuild via build_clean_dataset.py -- and update project.md wherever it reports DRIFT.
@@ -213,6 +211,23 @@ dev = [abs((num(r, "Surfactant_pct_stated") or 0)
 chk("Surfactant_pct_stated disagrees on", 56, sum(1 for d in dev if d > 5e-3), 0)
 chk("  worst disagreement (pp)", 5.8, max(dev), 0.05)
 
+# Design space. project.md quotes the range of the feature we model (hlb_calc), and warns
+# that 6.0-12.0 belongs to the client's stated column -- so both ranges are checked here.
+def rng(col, src=None):
+    v = [num(r, col) for r in (src or clean)]
+    v = [x for x in v if x is not None]
+    return min(v), max(v)
+
+for col, lo, hi, src in [("hlb_calc", 4.07, 14.08, None),
+                         ("surfactant_total_pct", 2.88, 18.80, None),
+                         ("extract_pct", 58.4, 81.0, None),
+                         ("hlb_client", 6.0, 12.0, None),
+                         ("Oil_Blend_g", 3.4, 14.5, raw)]:
+    got_lo, got_hi = rng(col, src)
+    # doc quotes these to 2 dp, so half a last place is the right tolerance
+    chk("design space: %s min" % col, lo, got_lo, 0.0051)
+    chk("  max", hi, got_hi, 0.0051)
+
 # Quarantine is per cell, never per row: these four row sets are named in project.md.
 chk("PDI>1 rows: whole DLS triplet blanked", True,
     all(num(ROW[n], c) is None for n in (54, 60, 61, 63)
@@ -264,6 +279,15 @@ chk("  against the HLB the sheet states", 10.5, F110["stated_hlb"], 0)
 chk("F110 sheet Sur% implies (g in 50 g batch)", 4.45, F110["stated_surf_pct"] / 100 * 50, 0.01)
 chk("  its listed surfactant masses sum to (g)", 2.40,
     F110["span80"] + F110["lecithin"] + F110["tween_oil"] + F110["tween_water"], 0.01)
+# project.md and the quarantine note both say the sheet contradicts the CSV on three
+# values. Pin the count: Span80 and Lecithin agree, the two Tween cells are blank in the
+# CSV, and PG reads 0.03 g on the sheet against 0.50 g in the CSV.
+_r110 = {r["Num"]: r for r in raw}["110"]
+chk("F110 sheet vs CSV: cells that disagree", 3,
+    sum(1 for col, v in [("Span80_g", 1.20), ("Lecithin_g", 0.35),
+                         ("Tween80_oil_phase_g", 0.35), ("Tween80_water_phase_g", 0.50),
+                         ("PG_g", 0.03)]
+        if num(_r110, col) is None or abs(num(_r110, col) - v) > 5e-3), 0)
 
 r, p, n = spearman(*triple(ANALYSIS, "ph", "stability_days"))
 chk("pH vs stability rho (109 rows)", 0.05, r, 0.01)
@@ -360,6 +384,81 @@ for lo, hi in [(1, 20), (21, 40), (41, 60), (61, 80), (81, 109)]:
     stb = [num(r, "stability_days") for r in blk]
     print("    rows %3d-%3d   lecithin %.2f-%.2f wt%%   stability %3.0f-%3.0f d   n=%d"
           % (lo, hi, min(lec), max(lec), min(stb), max(stb), len(blk)))
+
+# --------------------------------- project.md : Replicates, the row-order pairing
+# project.md tabulates each group *in row order*; the loop above prints it sorted. The
+# two disagreed in an earlier draft (rows 7/60 and 23/24/25 were copied out sorted), so
+# pin the pairing the doc actually claims.
+print("\n-- replicate pairing, as project.md tabulates it (row order) --")
+BY_NUM = {int(r["num"]): r for r in ANALYSIS}
+for g, doc in [((2, 55), [0.0, 22.0]), ((3, 56), [0.0, 5.0]), ((4, 57), [0.0, 4.0]),
+               ((5, 58), [0.0, 5.0]), ((6, 59), [0.0, 3.0]), ((7, 60), [21.0, 11.0]),
+               ((23, 24, 25), [100.0, 22.0, 12.0])]:
+    chk("rows %s stability in row order" % ",".join(str(x) for x in g), doc,
+        [num(BY_NUM[x], "stability_days") for x in g], 0)
+f23 = [num(BY_NUM[x], "stability_days") for x in (23, 24, 25)]
+chk("  F23 group mean (d) -- not the headline 100", 44.7, st.mean(f23), 0.05)
+chk("  F23 group median (d)", 22.0, st.median(f23), 0.01)
+# The doc's batch-effect bullet: rows 2-6 failed at 0 d and row 7 did NOT.
+chk("rows 2-6 that failed at 0 d", 5,
+    sum(1 for x in range(2, 7) if num(BY_NUM[x], "stability_days") == 0.0), 0)
+chk("  row 7 is the exception, not a 0", 21.0, num(BY_NUM[7], "stability_days"), 0.01)
+
+# ------------------- project.md : Client's product-ready formulations (9 of them)
+# The client confirmed on 2026-10-07 that rows 22/19/30/34/16 are also stable and usable
+# as a product, so the endorsed set is nine, not four, and the "why did they skip the top
+# 5" question is void. The important check here is the RETRACTION: all nine fall in runs
+# 16-34, so the bench picks sit inside the run-order confound and cannot corroborate the
+# lecithin lever independently of it. If that ever stops being true, the doc must change.
+print("\n-- the client's 9 product-ready formulations (confirmed 2026-10-07) --")
+PROD = [22, 19, 30, 34, 16, 20, 23, 31, 21]
+chk("product-ready formulations", 9, len(PROD), 0)
+rank = lambda x: 1 + sum(1 for r in ANALYSIS
+                         if num(r, "stability_days") > num(BY_NUM[x], "stability_days"))
+chk("stability ranks out of 109", [1, 2, 3, 4, 5, 6, 7, 8, 11], sorted(rank(x) for x in PROD), 0)
+chk("highest run number among them", 34, max(PROD), 0)
+chk("  none past run 40 -- the retraction rests on this", True, max(PROD) <= 40, 0)
+lec = [num(BY_NUM[x], "lecithin_pct") for x in PROD]
+chk("lecithin wt%: 8 of 9 at or above 3.86", 8, sum(1 for v in lec if v >= 3.86), 0)
+chk("  max", 4.50, max(lec), 0.005)
+chk("  the exception is F30", 1.59, num(BY_NUM[30], "lecithin_pct"), 0.005)
+chk("  none is lecithin-free", 0, sum(1 for v in lec if v == 0), 0)
+chk("set mean lecithin wt%", 1.88,
+    st.mean([num(r, "lecithin_pct") for r in ANALYSIS]), 0.005)
+pdi = [num(BY_NUM[x], "pdi") for x in PROD]
+chk("PDI across the nine: min (F16)", 0.190, min(pdi), 0.0005)
+chk("  max", 0.471, max(pdi), 0.005)
+chk("  exactly one is monodisperse (PDI < 0.2)", 1, sum(1 for v in pdi if v < 0.2), 0)
+z = [num(BY_NUM[x], "z_average_nm") for x in PROD]
+chk("z-average nm: min", 105.4, min(z), 0.05)
+chk("  max", 140.4, max(z), 0.05)
+chk("  all far above the report's 3-40 nm claim", True, min(z) > 40, 0)
+
+# The confound, restated as the two blocks the retraction turns on.
+print("\n  runs 1-40 vs 41-109 (why the bench picks are inside the confound)")
+for lo, hi, n_exp, med_s, med_l, n_prod in [(1, 40, 40, 21.0, 3.53, 9), (41, 109, 69, 10.0, 1.10, 0)]:
+    blk = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi]
+    chk("runs %d-%d: n" % (lo, hi), n_exp, len(blk), 0)
+    chk("  median stability (d)", med_s, st.median([num(r, "stability_days") for r in blk]), 0.01)
+    chk("  median lecithin wt%", med_l, st.median([num(r, "lecithin_pct") for r in blk]), 0.005)
+    chk("  product-ready rows inside", n_prod,
+        sum(1 for r in blk if int(r["num"]) in PROD), 0)
+
+# What survives: no lecithin-free formulation is product-ready, and the within-block
+# contrast that narrows (but does not break) the confound.
+print("\n  the zero-lecithin contrast -- what survives the retraction")
+zero = [r for r in ANALYSIS if num(r, "lecithin_pct") == 0]
+chk("zero-lecithin rows: n", 11, len(zero), 0)
+chk("  longest-lived of them (d)", 28.0, max(num(r, "stability_days") for r in zero), 0.01)
+chk("  median (d)", 10.0, st.median([num(r, "stability_days") for r in zero]), 0.01)
+chk("  none is product-ready", 0, sum(1 for r in zero if int(r["num"]) in PROD), 0)
+for lo, hi, n0, m0, n1, m1 in [(1, 40, 6, 11.0, 34, 22.0), (41, 109, 5, 10.0, 64, 10.0)]:
+    a = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi and num(r, "lecithin_pct") == 0]
+    b = [r for r in ANALYSIS if lo <= int(r["num"]) <= hi and num(r, "lecithin_pct") > 0]
+    chk("runs %d-%d, lecithin=0: n" % (lo, hi), n0, len(a), 0)
+    chk("  median (d)", m0, st.median([num(r, "stability_days") for r in a]), 0.01)
+    chk("runs %d-%d, lecithin>0: n" % (lo, hi), n1, len(b), 0)
+    chk("  median (d)", m1, st.median([num(r, "stability_days") for r in b]), 0.01)
 
 print("\n" + "=" * 78)
 if FAILED:
