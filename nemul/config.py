@@ -121,3 +121,30 @@ N_STABLE_PAST_THRESHOLD = 19
 # Run order is split into this many equal blocks for the within-block view, and the
 # time-split view trains on the first half of the run order and tests on the second.
 N_RUN_BLOCKS = 3
+
+# ---- the screening shortlist (PR5) -------------------------------------------
+# Protocol choices, not derived figures. The shortlist ranks *generated* candidate
+# compositions, so the client's question -- which formulations to make next -- gets an
+# answer rather than a re-ranking of the 101 already made. It is an extrapolation and
+# ships with the six guardrails in workcycle.md, Decisions.
+SHORTLIST_N_CANDIDATES = 4000    # drawn before the feasibility rejection; runs in seconds
+SHORTLIST_TOP_N = 12             # how many make the delivered table
+
+# The extrapolation threshold is **computed from the data, never typed in**: it is this
+# percentile of the observed nearest-different-composition distances, so it scales with
+# the design's own density instead of pinning a figure that would go stale. The median
+# of that same distribution is 0.762 wt%, owned by project.md and drift-checked there.
+EXTRAPOLATION_PERCENTILE = 95
+
+# The early, high-lecithin run block. All nine of the client's product-ready
+# formulations sit in runs 16-34 (project.md), which is exactly where the run-order
+# confound lives. Every candidate carries its distance to the nearest row in here, so a
+# candidate that ranks well *because* it resembles that block is visible as such.
+EARLY_BLOCK_RUNS = (16, 34)
+
+# The nine formulations the client considers stable enough to use as a product,
+# confirmed 2026-10-07. A client fact, not a derived figure -- and they occupy stability
+# ranks 1-8 plus 11 of 109, which is an external check on our target column. They are
+# also all inside EARLY_BLOCK_RUNS, so a shortlist that lands beside them is
+# corroborated and confounded at the same time. Both readings are true; see project.md.
+PRODUCT_READY_RUNS = (16, 19, 20, 21, 22, 23, 30, 31, 34)
