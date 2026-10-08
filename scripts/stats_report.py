@@ -353,6 +353,27 @@ chk("pure-error SD (days)", 24.9, (pure_ss / pure_df) ** 0.5, 0.1)
 chk("  on degrees of freedom", 8, pure_df, 0)
 chk("total SD of stability_days (days)", 81.1,
     st.pstdev([num(r, "stability_days") for r in ANALYSIS]), 0.1)
+# the ceiling on both scales. The variance ratio uses sample variances (ddof=1) on
+# both the pure-error and the total term; the days-scale SDs above are the doc's
+# population figures and differ in the fourth significant digit, which moves nothing.
+_sd = [num(r, "stability_days") for r in ANALYSIS]
+_sl = [math.log1p(v) for v in _sd]
+_bygrp = [[ANALYSIS.index(x) for x in g] for g in reps]
+_pure_l = sum((_sl[i] - st.mean([_sl[j] for j in idx])) ** 2 for idx in _bygrp for i in idx) / pure_df
+_tot_d = st.variance(_sd)
+_tot_l = st.variance(_sl)
+chk("pure-error SD on log1p", 1.265, _pure_l ** 0.5, 0.01)
+chk("total SD on log1p (ddof=1)", 1.124, _tot_l ** 0.5, 0.01)
+chk("noise ceiling, days (point)", 0.906, 1 - (pure_ss / pure_df) / _tot_d, 0.005)
+chk("noise ceiling, log1p (point, negative)", -0.267, 1 - _pure_l / _tot_l, 0.005)
+_repidx = {i for idx in _bygrp for i in idx}
+chk("replicate rows sit in the short-lived corner: their median (days)", 5.0,
+    st.median([_sd[i] for i in _repidx]), 0.1)
+chk("  against the median of every other row (days)", 12.0,
+    st.median([_sd[i] for i in range(len(_sd)) if i not in _repidx]), 0.1)
+chk("  longest-lived replicate row (days)", 100.0, max(_sd[i] for i in _repidx), 0.1)
+chk("SS variant, days -- near 1 only because little is replicated", 0.993,
+    1 - pure_ss / sum((v - st.mean(_sd)) ** 2 for v in _sd), 0.005)
 chk("widest replicate spread (days), rows 23/24/25", 88.0,
     max(max(num(x, "stability_days") for x in g) - min(num(x, "stability_days") for x in g)
         for g in reps), 0.1)
