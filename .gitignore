@@ -18,6 +18,12 @@ models/
 *.h5
 mlruns/
 
+# Generated deliverable blocks, the fitted model and the candidate shortlist.
+# `scripts/make_artifacts.py` rebuilds all of it in one command, and every figure in
+# it is derived from client rows -- so there is nothing to gain by tracking it and a
+# data leak to lose. Test 18 asserts this line is here.
+artifacts/
+
 # Python
 __pycache__/
 *.py[cod]
