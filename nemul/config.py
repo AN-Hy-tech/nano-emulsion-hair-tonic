@@ -98,3 +98,26 @@ N_REPEATS = 10
 # tuned inside nested CV in PR4; this one only has to be the *same* on both sides
 # of the comparison, so the delta measures the leak and not the tuning.
 LEAKAGE_PROBE_ALPHA = 1.0
+
+# ---- the model ladder (PR4) --------------------------------------------------
+# Protocol choices, not derived figures. The ten-point alpha grid is the one named
+# in workcycle.md; it is searched in the *inner* loop only, on training rows, so the
+# outer grouped folds never see a tuned hyperparameter chosen with their own data.
+RIDGE_ALPHA_GRID = tuple(10.0 ** (-3 + 6 * i / 9) for i in range(10))
+L1_RATIO_GRID = (0.1, 0.5, 0.9)
+N_INNER_SPLITS = 3           # inner grouped folds for nested tuning; 3 on ~80 train groups
+
+# ---- the binarised rung (PR4) ------------------------------------------------
+# 30 days, declared 2026-10-08 (Albert) before anything was scored, and never
+# searched over. A month of shelf life is an external product criterion; it is not
+# read off our own target distribution. See workcycle.md, Decisions.
+BINARY_THRESHOLD_DAYS = 30
+
+# A data-contract count, owned by planning/project.md and drift-checked by
+# scripts/stats_report.py: rows with stability_days > BINARY_THRESHOLD_DAYS.
+N_STABLE_PAST_THRESHOLD = 19
+
+# ---- the confound triad (PR4) ------------------------------------------------
+# Run order is split into this many equal blocks for the within-block view, and the
+# time-split view trains on the first half of the run order and tests on the second.
+N_RUN_BLOCKS = 3

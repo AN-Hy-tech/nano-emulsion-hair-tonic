@@ -382,6 +382,58 @@ for g in reps:
     print("    rows %-12s stability %-22s spread %3.0f d"
           % (",".join(x["num"] for x in g), str(ys), ys[-1] - ys[0]))
 
+print()
+print("-- the 30-day threshold (the binarised rung, PR4) --")
+# The threshold is declared, never searched (workcycle.md). These checks guard the
+# class balance the AUC comparison rests on, and that no row sits on the boundary.
+_thr = 30.0
+chk("rows stable past 30 d", 19, sum(1 for v in _sd if v > _thr), 0)
+chk("rows at exactly 30 d -- the threshold sits in a gap", 0,
+    sum(1 for v in _sd if v == _thr), 0)
+chk("nearest values either side of 30 d", [28.0, 33.0],
+    [max(v for v in _sd if v < _thr), min(v for v in _sd if v > _thr)], 0)
+chk("replicate groups straddling 30 d", 1,
+    sum(1 for g in reps
+        if len({num(x, "stability_days") > _thr for x in g}) > 1), 0)
+
+print()
+print("-- the 10-day plateau and the replicate layout (PR4) --")
+# Why these are here: the nonlinear rungs scored +0.31/+0.35 under composition-grouped
+# CV and below zero under run-block CV. The plateau below is what they were
+# interpolating, and it sits in a contiguous late run block. See pr-log.md, PR4.
+chk("rows at exactly 10 d", 36, sum(1 for v in _sd if v == 10.0), 0)
+chk("  of those, runs 64 and later", 34,
+    sum(1 for r in ANALYSIS if num(r, "stability_days") == 10.0 and int(r["num"]) >= 64), 0)
+chk("rows 81-109 all at 10 or 11 d", 29,
+    sum(1 for r in ANALYSIS
+        if int(r["num"]) >= 81 and num(r, "stability_days") in (10.0, 11.0)), 0)
+_edges = sorted(int(r["num"]) for r in ANALYSIS)
+_b = lambda n: 0 if n <= _edges[len(_edges) // 3] else (
+    1 if n <= _edges[2 * len(_edges) // 3] else 2)
+chk("replicate groups spanning a run-order third", 6,
+    sum(1 for g in reps if len({_b(int(x["num"])) for x in g}) > 1), 0)
+
+print()
+print("-- how dense the design space is (PR4) --")
+# Why: the nonlinear rungs win by interpolating between near-neighbour compositions.
+# Nearest *different* composition, so replicate twins do not count as neighbours.
+_vec = [[num(r, c) for c in CCOLS] for r in ANALYSIS]
+_gid = {id(r): i for i, g in enumerate(groups) for r in g}
+_grp = [_gid[id(r)] for r in ANALYSIS]
+_nn = []
+for i, a in enumerate(_vec):
+    best = float("inf")
+    for j, b in enumerate(_vec):
+        if _grp[j] == _grp[i]:
+            continue
+        d = math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
+        if d < best:
+            best = d
+    _nn.append(best)
+chk("median nearest different composition (wt%)", 0.762, st.median(_nn), 0.001)
+chk("rows within 1.0 wt% of another composition", 63, sum(1 for d in _nn if d < 1.0), 0)
+chk("  within 0.5 wt%", 23, sum(1 for d in _nn if d < 0.5), 0)
+
 print("\n-- the run-order confound --")
 r, p, n = spearman(*triple(ANALYSIS, "num", "stability_days"))
 chk("run order vs stability", -0.39, r, 0.01)
