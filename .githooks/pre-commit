@@ -1,0 +1,71 @@
+#!/bin/sh
+# Pre-commit: run scripts/stats_report.py and refuse the commit if a figure has drifted.
+#
+# Why this is a hook and not a test. Every figure quoted in the planning docs is
+# recomputed from the client CSV by stats_report.py, which exits 1 on any mismatch. The
+# check is only worth anything if it runs *before* a commit lands -- a figure that went
+# stale three commits ago is already in history. Nothing else in the repo enforces the
+# timing: pytest runs when somebody runs it.
+#
+# Install it, once per checkout, from the repo root:
+#
+#     git config core.hooksPath .githooks
+#
+# tests/test_hooks.py asserts that it is installed here, and exercises the three
+# outcomes below against a stub.
+#
+# Escape hatch: `git commit --no-verify` skips it. That is deliberate -- a hook you
+# cannot bypass is a hook that gets uninstalled -- but a bypass means the doc figures
+# went into history unchecked, so run the check and reconcile the docs afterwards.
+set -u
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+DATA=data/processed/formulations_clean.csv
+
+# No client data in this checkout, so there is nothing to recompute. The CSV is client
+# data and is never committed, so this is the normal state of a fresh clone. Skip out
+# loud: a check that skips silently reads exactly like a check that passed.
+if [ ! -f "$DATA" ]; then
+    echo "pre-commit: no $DATA in this checkout, so there are no figures to" >&2
+    echo "            drift-check. Skipping stats_report.py." >&2
+    exit 0
+fi
+
+# The interpreter. NEMUL_HOOK_PYTHON wins, so a checkout whose venv lives elsewhere --
+# or a test driving this script directly -- can point at its own without editing a
+# tracked file. Otherwise take the project venv, either platform's layout, and fall
+# back to whatever `python` is on PATH.
+PY=${NEMUL_HOOK_PYTHON:-}
+if [ -z "$PY" ]; then
+    if [ -x .venv/Scripts/python.exe ]; then
+        PY=.venv/Scripts/python.exe
+    elif [ -x .venv/bin/python ]; then
+        PY=.venv/bin/python
+    else
+        PY=$(command -v python3 || command -v python) || PY=""
+    fi
+fi
+if [ -z "$PY" ]; then
+    echo "pre-commit: no Python interpreter found. Create the venv with" >&2
+    echo "            python -m venv .venv && .venv/Scripts/python.exe -m pip install -r requirements.txt" >&2
+    echo "            or set NEMUL_HOOK_PYTHON to the interpreter to use." >&2
+    exit 1
+fi
+
+# Output is held and replayed only on failure: on the happy path this runs on every
+# commit and 149 ok lines scrolling past is how a wall of output gets ignored.
+out=$("$PY" scripts/stats_report.py 2>&1)
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "$out" >&2
+    echo "" >&2
+    echo "pre-commit: stats_report.py exited $status -- a figure in the planning docs no" >&2
+    echo "            longer matches the data. Reconcile the doc (or rebuild the data)" >&2
+    echo "            and commit again. The docs own the facts; the script owns the" >&2
+    echo "            figures. Bypass with --no-verify only if you mean to." >&2
+    exit 1
+fi
+
+exit 0
