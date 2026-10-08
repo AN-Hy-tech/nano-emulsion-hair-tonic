@@ -638,6 +638,11 @@ runs are identical, and a test asserts it.
     .venv/Scripts/python.exe -m pytest                     # the full test suite
     .venv/Scripts/python.exe scripts/stats_report.py       # drift-check the doc figures
     .venv/Scripts/python.exe scripts/make_artifacts.py     # rebuild artifacts/
+    git config core.hooksPath .githooks                    # install the pre-commit hook
+
+The last line is per checkout, not per clone: `.githooks/pre-commit` runs the drift
+check before every commit and refuses one whose doc figures no longer match the data.
+It skips, out loud, in a checkout that has no data file in it.
 
 The data file is not in the repository and never will be: it is client data, and
 `.gitignore` blocks it while a test asserts nothing of the sort is tracked. Place
