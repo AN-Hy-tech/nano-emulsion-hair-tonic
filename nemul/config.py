@@ -85,3 +85,16 @@ N_REPLICATE_ROWS = 15
 
 CLOSURE_TOL_PP = 1e-3        # renormalisation closes to 100 wt% this tightly
 GROUP_TOL_PP = 0.05          # two rows are the same composition within this, per component
+
+# ---- cross-validation protocol ----------------------------------------------
+# Repeated GroupKFold grouped on composition (see workcycle.md, Decisions). Not a
+# derived figure: a protocol choice. 5 folds leaves ~20 compositions per test fold
+# on 101 groups; 10 repeats make the across-repeat spread readable, which is what
+# test 15 reports the mean-baseline margin against. A full run takes seconds.
+N_SPLITS = 5
+N_REPEATS = 10
+
+# The ridge alpha the leakage comparison (test 7) scores with. The real alpha is
+# tuned inside nested CV in PR4; this one only has to be the *same* on both sides
+# of the comparison, so the delta measures the leak and not the tuning.
+LEAKAGE_PROBE_ALPHA = 1.0
