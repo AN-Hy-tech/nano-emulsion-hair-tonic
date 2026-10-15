@@ -1,19 +1,11 @@
 # nano-emulsion-hair-tonic
 
 Composition-only machine-learning analysis of **109 herbal nanoemulsion formulations**, modelling
-days to visible degradation. Built for Dr. Manijeh Jokar (Shiraz University), under the Iran
-National Science Foundation independent postdoctoral programme, tracking code 4042105.
+days to visible degradation.
 
 **The headline result, so nobody has to dig for it:** with this dataset you can rank candidate
 formulations, but you cannot predict how many days any one of them will last. The deliverable is a
-screening aid, not a shelf-life forecast. Section 5 of the report says why, in detail.
-
-## راهنمای فارسی
-
-گزارش کامل این پروژه، به فارسی و بدون نیاز به پیش‌زمینهٔ یادگیری ماشین، همهٔ نتایج و محدودیت‌ها و
-فهرست پیشنهادی برای ساخت بعدی را در بر دارد. **برای خواندن نتایج، به آن گزارش مراجعه کنید؛**
-این مخزن فقط کد تحلیل است. نتیجهٔ کوتاه: با این داده‌ها می‌توان فرمولاسیون‌ها را **رتبه‌بندی** کرد،
-اما نمی‌توان **تعداد روز** پایداری را پیش‌بینی کرد.
+screening aid, not a shelf-life forecast. Section 5 of the full client report says why, in detail.
 
 ## What is and is not in this repository
 
