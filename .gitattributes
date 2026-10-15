@@ -1,0 +1,6 @@
+# The hook is run by `sh`, which treats a trailing CR as part of the command and
+# fails on every line. Git normalises line endings on checkout, so without this the
+# tracked hook arrives broken on any checkout configured for CRLF -- and it arrives
+# broken *silently*, because a hook that cannot run is a hook that blocks nothing.
+# tests/test_hooks.py asserts both this attribute and the bytes on disk.
+.githooks/** text eol=lf
